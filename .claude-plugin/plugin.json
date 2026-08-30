@@ -1,7 +1,7 @@
 {
   "name": "session-finder",
   "version": "0.1.0",
-  "description": "Search Claude Code session history from inside a session and print resume commands",
+  "description": "Claude Code session toolbox — search history & print resume commands, export to md/html/gist, automatic cross-session memory, all integrated as one plugin with zero dependencies",
   "author": {
     "name": "Jack11111eee"
   },
