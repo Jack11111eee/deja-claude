@@ -71,7 +71,11 @@ allowed-tools: Bash(python3:*)
 3. 手动复制一条 resume 命令到新终端，确认能恢复
 4. `claude plugin` 加载本目录后 `/session-search 杭州` 可用
 
+## 已交付（迭代二）
+- 会话导出分享（/session-export，markdown/html/gist）
+- 跨会话持久记忆（SessionStart + Stop hooks）
+
 ## 暂不做（后续迭代）
-- 多会话并行管理、跨会话持久记忆（第二三迭代）
+- 多会话并行管理（tmux / git worktree）
 - 语义搜索 / 向量索引 / fzf 交互
-- 会话导出分享
+- LLM 智能总结、PDF 导出

@@ -58,14 +58,16 @@ Claude Code 会话工具箱：搜索恢复 / 导出分享 / 跨会话记忆。
 
 装好插件后自动运行，无需任何手动触发：
 
-- **`Stop` hook**：每次对话结束后（节流 5 分钟一次），把本会话的关键摘要追加到项目专属记忆文件。包括：消息数、常用工具、写过的文件路径、最后一段 assistant 回复摘要。
+- **`Stop` hook**：对话停顿/结束时触发（按 session 节流 5 分钟一次），把本会话的关键摘要追加到项目专属记忆文件。包括：消息数、常用工具、写过的文件路径、最后一段 assistant 回复摘要。
 - **`SessionStart` hook**（触发时机：`startup | resume | compact`）：新会话开始时，把该项目的历史记忆注入上下文，不用重新解释项目背景。
 
-记忆文件位置：
+记忆文件位于插件持久数据目录下，即 `${CLAUDE_PLUGIN_DATA}/memory/<项目路径-转义>.md`，实际路径形如：
 
 ```
-~/.claude/plugins/data/session-finder/memory/<项目路径-转义>.md
+~/.claude/plugins/data/<插件id>/memory/<项目路径-转义>.md
 ```
+
+`<插件id>` 取决于安装方式（marketplace 安装一般是插件名；`--plugin-dir` 加载会带 `-inline` 后缀）。**注意**：换安装方式后旧记忆路径会跟着变，跨安装方式想保留记忆请手动迁移旧文件。
 
 - 按项目隔离，互不影响。
 - 滚动窗口只保留最近 **5 次**会话，不会无限增长。
@@ -136,6 +138,8 @@ Claude Code 把所有会话存在 `~/.claude/projects/<路径转义>/<sessionId>
 ---
 
 ## Backlog（后续迭代，暂未做）
+
+原始需求清单里 B/D（跨会话记忆）、C/E（多会话并行）有重复，本插件实现了 A（导出分享）+ B/D（跨会话记忆），C/E 类需求暂缓：
 
 - [ ] 多会话并行管理（tmux / git worktree）
 - [ ] 跨会话记忆接入 LLM 智能总结
