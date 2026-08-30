@@ -76,6 +76,7 @@ def parse_session(path, query=None):
             if record.get("type") not in ("user", "assistant"):
                 continue
             text = extract_text(record.get("message") or {})
+            message_count += 1
             if record.get("timestamp"):
                 last_timestamp = record["timestamp"]
             if (
@@ -85,8 +86,7 @@ def parse_session(path, query=None):
                 and not is_noise(text)
             ):
                 first_user_message = text
-            message_count += 1
-            if query_lower and snippet is None and not is_noise(text):
+            if query_lower and snippet is None:
                 idx = text.lower().find(query_lower)
                 if idx != -1:
                     start = max(0, idx - SNIPPET_CTX)
