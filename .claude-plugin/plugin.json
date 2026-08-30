@@ -1,0 +1,6 @@
+{
+  "name": "session-finder",
+  "version": "0.1.0",
+  "description": "Search Claude Code session history from inside a session and print resume commands",
+  "commands": "./commands"
+}
