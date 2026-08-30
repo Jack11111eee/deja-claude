@@ -24,13 +24,16 @@ LAST_MSG_TAIL = 200
 NOISE_PREFIXES = (
     "<system-reminder>", "<command-name>", "<local-command-",
     "<bash-", "<ide-", "<user-prompt-submit-hook>",
+    "[Request interrupted by user",
 )
 WRITE_TOOLS = ("Edit", "Write", "NotebookEdit")
 
 
 def is_noise(text):
     t = text.strip()
-    return any(t.startswith(p) for p in NOISE_PREFIXES)
+    if not t:
+        return True
+    return any(t.splitlines()[0].startswith(p) for p in NOISE_PREFIXES)
 
 
 def analyze_transcript(path):
