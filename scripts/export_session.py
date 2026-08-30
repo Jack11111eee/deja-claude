@@ -312,8 +312,11 @@ def push_gist(path, description, public):
         print(f"error: gh gist create failed: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
     # gh prints the gist URL on stdout
-    url = result.stdout.strip().splitlines()[-1]
-    return url
+    lines = result.stdout.strip().splitlines()
+    if not lines or not lines[-1].startswith("http"):
+        print(f"error: unexpected gh output: {result.stdout.strip()!r}", file=sys.stderr)
+        sys.exit(1)
+    return lines[-1]
 
 
 def main():
