@@ -31,6 +31,7 @@ NOISE_PREFIXES = (
     "<ide-selection>",
     "<ide-opened-files>",
     "<user-prompt-submit-hook>",
+    "[Request interrupted by user",
 )
 
 
@@ -40,7 +41,9 @@ def escape_path(path):
 
 def is_noise(text):
     t = text.strip()
-    return any(t.startswith(p) for p in NOISE_PREFIXES)
+    if not t:
+        return True
+    return any(t.splitlines()[0].startswith(p) for p in NOISE_PREFIXES)
 
 
 def truncate(text, limit=TOOL_RESULT_MAX):

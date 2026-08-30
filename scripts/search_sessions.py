@@ -16,8 +16,28 @@ SUMMARY_LEN = 40
 SNIPPET_CTX = 50
 
 
+NOISE_PREFIXES = (
+    "<system-reminder>",
+    "<command-name>",
+    "<command-message>",
+    "<command-args>",
+    "<local-command-",
+    "<bash-",
+    "<ide-",
+    "<user-prompt-submit-hook>",
+    "[Request interrupted by user",
+)
+
+
 def escape_path(path):
     return path.replace("/", "-")
+
+
+def is_noise(text):
+    t = text.strip()
+    if not t:
+        return True
+    return any(t.splitlines()[0].startswith(p) for p in NOISE_PREFIXES)
 
 
 def extract_text(message):
@@ -56,12 +76,17 @@ def parse_session(path, query=None):
             if record.get("type") not in ("user", "assistant"):
                 continue
             text = extract_text(record.get("message") or {})
-            message_count += 1
             if record.get("timestamp"):
                 last_timestamp = record["timestamp"]
-            if record["type"] == "user" and first_user_message is None and text:
+            if (
+                record["type"] == "user"
+                and first_user_message is None
+                and text
+                and not is_noise(text)
+            ):
                 first_user_message = text
-            if query_lower and snippet is None:
+            message_count += 1
+            if query_lower and snippet is None and not is_noise(text):
                 idx = text.lower().find(query_lower)
                 if idx != -1:
                     start = max(0, idx - SNIPPET_CTX)
