@@ -31,6 +31,8 @@ Claude Code 会话工具箱：搜索恢复 / 导出分享 / 跨会话记忆。
 /session-search 关键词              # 在当前项目历史正文里搜索
 /session-search --all               # 列出全部项目历史
 /session-search --all 关键词        # 全部项目里搜
+/session-search --limit 10          # 限制结果数量
+/session-search --json              # 输出机器可读 JSON
 ```
 
 每条结果输出：`项目名 │ 时间 │ 首条用户消息摘要 │ claude --resume <sessionId>`
@@ -61,10 +63,10 @@ Claude Code 会话工具箱：搜索恢复 / 导出分享 / 跨会话记忆。
 - **`Stop` hook**：对话停顿/结束时触发（按 session 节流 5 分钟一次），把本会话的关键摘要追加到项目专属记忆文件。包括：消息数、常用工具、写过的文件路径、最后一段 assistant 回复摘要。
 - **`SessionStart` hook**（触发时机：`startup | resume | compact`）：新会话开始时，把该项目的历史记忆注入上下文，不用重新解释项目背景。
 
-记忆文件位于插件持久数据目录下，即 `${CLAUDE_PLUGIN_DATA}/memory/<项目路径-转义>.md`，实际路径形如：
+记忆文件位于插件持久数据目录下，即 `${CLAUDE_PLUGIN_DATA}/memory/<项目路径-转义及哈希>.md`，实际路径形如：
 
 ```
-~/.claude/plugins/data/<插件id>/memory/<项目路径-转义>.md
+~/.claude/plugins/data/<插件id>/memory/<项目路径-转义及哈希>.md
 ```
 
 `<插件id>` 取决于安装方式（marketplace 安装一般是插件名；`--plugin-dir` 加载会带 `-inline` 后缀）。**注意**：换安装方式后旧记忆路径会跟着变，跨安装方式想保留记忆请手动迁移旧文件。
@@ -74,25 +76,29 @@ Claude Code 会话工具箱：搜索恢复 / 导出分享 / 跨会话记忆。
 - 上下文注入上限 **9000 字符**，超出会截断。
 - 这是 Claude Code 官方规定的插件持久数据目录，不会污染你的项目仓库。
 
-当前版本用**本地规则生成摘要（零 LLM 成本）**；LLM 智能总结的接口已预留，默认关闭。
+当前版本用**本地规则生成摘要（零 LLM 成本）**；LLM 智能总结仍是后续计划，当前没有对应实现。
 
 ---
 
 ## 安装
 
-**方式 1：本地目录**
+**方式 1：从本地目录临时加载（无需安装）**
 
 ```sh
-claude plugin install /path/to/session-finder
+claude --plugin-dir /path/to/session-finder
 ```
 
-**方式 2：直接从 GitHub**
+这只对当前 Claude Code 会话生效，不会写入全局插件安装记录。
+
+**方式 2：通过 marketplace 安装**
+
+先把包含本插件的 marketplace 添加到 Claude Code，再使用 marketplace 中声明的插件标识安装：
 
 ```sh
-claude plugin install https://github.com/Jack11111eee/deja-claude
+claude plugin install session-finder@<marketplace-name>
 ```
 
-装好后重开一个 Claude Code 会话，hooks 自动生效。
+当前 Claude Code 的 `plugin install` 不接受本地目录或 GitHub URL；开发和本地验证请使用 `--plugin-dir`。重新开启会话后，已安装插件的 hooks 会自动生效。
 
 ---
 
@@ -131,7 +137,7 @@ Claude Code 把所有会话存在 `~/.claude/projects/<路径转义>/<sessionId>
 
 | 要求 | 用途 |
 |------|------|
-| Python 3（任一版本，标准库即可） | 所有脚本运行 |
+| Python 3.9+（仅标准库） | 所有脚本运行 |
 | `gh` CLI + 登录（可选） | `--gist` 分享功能 |
 | `claude` CLI | 插件宿主 |
 

@@ -2,12 +2,13 @@
 """Shared helpers for the cross-session memory hooks.
 
 Memory is stored per-project at:
-  ${CLAUDE_PLUGIN_DATA}/memory/<escaped-cwd>.md
+  ${CLAUDE_PLUGIN_DATA}/memory/<escaped-cwd>-<hash>.md
 
 CLAUDE_PLUGIN_DATA is injected by claude when running plugin hooks; fall back to
 ~/.claude/plugins/data/session-finder for direct invocation / testing.
 """
 
+import hashlib
 import os
 import re
 
@@ -18,9 +19,21 @@ def plugin_data_dir():
     return os.environ.get("CLAUDE_PLUGIN_DATA") or FALLBACK_DATA_DIR
 
 
-def memory_file_for(cwd):
+def _project_slug(cwd):
+    absolute = os.path.abspath(cwd)
+    readable = re.sub(r"[^A-Za-z0-9]", "-", absolute).strip("-") or "project"
+    readable = readable[:80]
+    digest = hashlib.sha256(absolute.encode("utf-8")).hexdigest()[:12]
+    return f"{readable}-{digest}"
+
+
+def legacy_memory_file_for(cwd):
     safe = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(cwd))
     return os.path.join(plugin_data_dir(), "memory", safe + ".md")
+
+
+def memory_file_for(cwd):
+    return os.path.join(plugin_data_dir(), "memory", _project_slug(cwd) + ".md")
 
 
 def state_file_for(session_id):

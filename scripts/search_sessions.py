@@ -48,7 +48,11 @@ def extract_text(message):
         return "\n".join(
             block.get("text", "")
             for block in content
-            if isinstance(block, dict) and block.get("type") == "text"
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "text"
+                and isinstance(block.get("text", ""), str)
+            )
         )
     return ""
 
@@ -72,6 +76,8 @@ def parse_session(path, query=None):
             try:
                 record = json.loads(line)
             except json.JSONDecodeError:
+                continue
+            if not isinstance(record, dict):
                 continue
             if record.get("type") not in ("user", "assistant"):
                 continue
@@ -158,6 +164,8 @@ def main():
     parser.add_argument("--limit", type=int, default=20, help="max results (default 20)")
     parser.add_argument("--json", action="store_true", help="output JSON")
     args = parser.parse_args()
+    if args.limit < 0:
+        parser.error("--limit must be non-negative")
 
     results = search(args.all, args.query)[: args.limit]
     if args.json:

@@ -113,6 +113,8 @@ def parse_session(path):
                 rec = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            if not isinstance(rec, dict):
+                continue
             rtype = rec.get("type")
             if rtype not in ("user", "assistant"):
                 continue
@@ -137,24 +139,13 @@ def parse_session(path):
             if not isinstance(content, list):
                 continue
 
-            # "user" record whose first block is tool_result -> result carrier, not a turn
-            if (
+            # A user record starting with tool_result is a result carrier, not a turn.
+            result_carrier = (
                 rtype == "user"
                 and content
                 and isinstance(content[0], dict)
                 and content[0].get("type") == "tool_result"
-            ):
-                for item in content:
-                    if isinstance(item, dict) and item.get("type") == "tool_result":
-                        result_text = extract_result_text(item.get("content"))
-                        tu = tool_use_index.get(item.get("tool_use_id"))
-                        if tu is not None:
-                            tu.text = truncate(result_text)  # attach result to tool_use
-                        else:
-                            blocks.append(
-                                Block("tool_result", text=truncate(result_text))
-                            )
-                continue
+            )
 
             for item in content:
                 if not isinstance(item, dict):
@@ -162,6 +153,10 @@ def parse_session(path):
                 btype = item.get("type")
                 if btype == "text":
                     text = item.get("text", "")
+                    if not isinstance(text, str):
+                        continue
+                    if result_carrier:
+                        continue
                     if rtype == "user":
                         if is_noise(text):
                             continue
@@ -178,8 +173,17 @@ def parse_session(path):
                     )
                     tool_use_index[item.get("id")] = blk
                     blocks.append(blk)
+                elif btype == "tool_result":
+                    result_text = extract_result_text(item.get("content"))
+                    tu = tool_use_index.get(item.get("tool_use_id"))
+                    if tu is not None:
+                        tu.text = truncate(result_text)
+                    else:
+                        blocks.append(Block("tool_result", text=truncate(result_text)))
                 elif btype == "thinking":
-                    blocks.append(Block("thinking", text=item.get("thinking", "")))
+                    thinking = item.get("thinking", "")
+                    if isinstance(thinking, str):
+                        blocks.append(Block("thinking", text=thinking))
     meta = {
         "session_id": os.path.splitext(os.path.basename(path))[0],
         "first_user_message": (first_user_message or "").strip(),
@@ -197,7 +201,11 @@ def extract_result_text(content):
         return "\n".join(
             c.get("text", "")
             for c in content
-            if isinstance(c, dict) and c.get("type") == "text"
+            if (
+                isinstance(c, dict)
+                and c.get("type") == "text"
+                and isinstance(c.get("text", ""), str)
+            )
         )
     return ""
 
@@ -307,7 +315,11 @@ def push_gist(path, description, public):
     cmd = ["gh", "gist", "create", path, "-d", description]
     if public:
         cmd.append("--public")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError:
+        print("error: --gist requires the GitHub CLI (`gh`) to be installed", file=sys.stderr)
+        sys.exit(1)
     if result.returncode != 0:
         print(f"error: gh gist create failed: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
@@ -361,29 +373,40 @@ def main():
 
     if args.gist:
         # gist needs a real file on disk
-        if args.output:
-            out_file = args.output
-            with open(out_file, "w", encoding="utf-8") as f:
-                f.write(rendered)
-        else:
-            import tempfile
+        temporary = not args.output
+        out_file = args.output
+        try:
+            if args.output:
+                with open(out_file, "w", encoding="utf-8") as f:
+                    f.write(rendered)
+            else:
+                import tempfile
 
-            fd, out_file = tempfile.mkstemp(suffix=f"-{meta['session_id']}.{ext}")
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.write(rendered)
-        if args.public:
-            print(
-                "⚠️  creating a PUBLIC gist — anyone with the link can see the full "
-                "conversation including code. Ctrl-C within 3s to abort.",
-                file=sys.stderr,
-            )
-            import time
+                fd, out_file = tempfile.mkstemp(suffix=f"-{meta['session_id']}.{ext}")
+                try:
+                    stream = os.fdopen(fd, "w", encoding="utf-8")
+                except BaseException:
+                    os.close(fd)
+                    raise
+                with stream:
+                    stream.write(rendered)
+            if args.public:
+                print(
+                    "⚠️  creating a PUBLIC gist — anyone with the link can see the full "
+                    "conversation including code. Ctrl-C within 3s to abort.",
+                    file=sys.stderr,
+                )
+                import time
 
-            time.sleep(3)
-        url = push_gist(out_file, f"Claude Code session {meta['session_id']}", args.public)
-        print(url)
-        if not args.output:
-            os.unlink(out_file)
+                time.sleep(3)
+            url = push_gist(out_file, f"Claude Code session {meta['session_id']}", args.public)
+            print(url)
+        finally:
+            if temporary and out_file:
+                try:
+                    os.unlink(out_file)
+                except OSError:
+                    pass
     elif args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(rendered)

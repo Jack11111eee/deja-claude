@@ -7,7 +7,7 @@ allowed-tools: Bash(python3:*)
 执行：
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/search_sessions.py $ARGUMENTS
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/search_sessions.py" $ARGUMENTS
 ```
 
 把结果呈现给用户：
@@ -16,6 +16,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/search_sessions.py $ARGUMENTS
 - `/session-search <关键词>` 在当前项目历史里搜正文
 - `/session-search --all` 列出全部项目历史会话
 - `/session-search --all <关键词>` 在全部项目里搜
+- 加 `--limit N` 限制结果数量；加 `--json` 输出机器可读 JSON
 
 每条结果包含：项目名 / 时间 / 首条用户消息摘要 / `claude --resume <sessionId>`。
 
