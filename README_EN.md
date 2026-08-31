@@ -31,6 +31,8 @@ Find past sessions across all your projects, right from inside a Claude Code ses
 /session-search <keyword>          # search full text within current project
 /session-search --all              # list history across all projects
 /session-search --all <keyword>    # search across all projects
+/session-search --limit 10          # limit the number of results
+/session-search --json              # emit machine-readable JSON
 ```
 
 Each result shows: `project │ timestamp │ first user message excerpt │ claude --resume <sessionId>`
@@ -61,36 +63,42 @@ No manual trigger needed — runs automatically once the plugin is installed:
 - **`Stop` hook**: after each turn (throttled to once per 5 minutes), appends a summary of the session to a project-scoped memory file. Captures: message count, most-used tools, files written, and a snippet of the last assistant reply.
 - **`SessionStart` hook** (fires on `startup | resume | compact`): injects the project's memory into context at the start of a new session, so you don't have to re-explain the background.
 
-Memory files live at:
+Memory files live under the plugin's persistent data directory:
 
 ```
-~/.claude/plugins/data/session-finder/memory/<escaped-project-path>.md
+${CLAUDE_PLUGIN_DATA}/memory/<escaped-project-path-and-hash>.md
 ```
+
+The concrete `CLAUDE_PLUGIN_DATA` path depends on how the plugin is loaded or installed.
 
 - Isolated per project.
 - Rolling window — only the **last 5 sessions** are kept.
 - Context injection capped at **9000 characters** (truncated if exceeded).
 - This is the official Claude Code plugin data directory; it does not touch your project workspace.
 
-The current version generates summaries with **local rules (zero LLM cost)**. An LLM-powered smart summarization hook is stubbed in but disabled by default.
+The current version generates summaries with **local rules (zero LLM cost)**. LLM-powered summarization remains a roadmap item and is not implemented yet.
 
 ---
 
 ## Installation
 
-**From a local directory:**
+**Load from a local directory (no installation):**
 
 ```sh
-claude plugin install /path/to/session-finder
+claude --plugin-dir /path/to/session-finder
 ```
 
-**From GitHub:**
+This applies only to the current Claude Code session and does not add a global plugin installation.
+
+**Install through a marketplace:**
+
+After adding a marketplace that contains this plugin, install the identifier declared by that marketplace:
 
 ```sh
-claude plugin install https://github.com/Jack11111eee/deja-claude
+claude plugin install session-finder@<marketplace-name>
 ```
 
-Restart your Claude Code session after installing — hooks take effect automatically.
+Current Claude Code versions do not accept a local directory or GitHub URL through `plugin install`; use `--plugin-dir` for development and local verification. Restart Claude Code after a marketplace installation so hooks take effect.
 
 ---
 
@@ -129,7 +137,7 @@ Claude Code stores sessions at `~/.claude/projects/<escaped-path>/<sessionId>.js
 
 | Requirement | Purpose |
 |---|---|
-| Python 3 (stdlib only, any version) | Runs all scripts |
+| Python 3.9+ (standard library only) | Runs all scripts |
 | `gh` CLI + authenticated (optional) | `--gist` sharing |
 | `claude` CLI | Plugin host |
 

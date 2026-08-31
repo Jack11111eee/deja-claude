@@ -7,7 +7,7 @@ allowed-tools: Bash(python3:*)
 执行：
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/export_session.py $ARGUMENTS
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/export_session.py" $ARGUMENTS
 ```
 
 用法：

@@ -15,7 +15,12 @@ import sys
 import time
 from collections import Counter
 
-from memory_common import ensure_parent, memory_file_for, state_file_for
+from memory_common import (
+    ensure_parent,
+    legacy_memory_file_for,
+    memory_file_for,
+    state_file_for,
+)
 
 THROTTLE_SECONDS = 300
 MAX_ENTRIES = 5
@@ -50,6 +55,8 @@ def analyze_transcript(path):
                 rec = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            if not isinstance(rec, dict):
+                continue
             rtype = rec.get("type")
             if rtype not in ("user", "assistant"):
                 continue
@@ -60,7 +67,11 @@ def analyze_transcript(path):
                     continue
                 text = content if isinstance(content, str) else " ".join(
                     b.get("text", "") for b in blocks
-                    if isinstance(b, dict) and b.get("type") == "text"
+                    if (
+                        isinstance(b, dict)
+                        and b.get("type") == "text"
+                        and isinstance(b.get("text", ""), str)
+                    )
                 )
                 if text.strip() and not is_noise(text):
                     user_msgs += 1
@@ -77,7 +88,10 @@ def analyze_transcript(path):
                             if p and p not in written_files:
                                 written_files.append(p)
                     elif b.get("type") == "text":
-                        t = b.get("text", "").strip()
+                        text = b.get("text", "")
+                        if not isinstance(text, str):
+                            continue
+                        t = text.strip()
                         if t:
                             last_assistant_text = t
     return {
@@ -120,6 +134,8 @@ def main():
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
         sys.exit(0)
+    if not isinstance(payload, dict):
+        sys.exit(0)
     session_id = payload.get("session_id") or ""
     transcript = payload.get("transcript_path") or ""
     cwd = payload.get("cwd") or ""
@@ -136,7 +152,12 @@ def main():
 
     entry = summarize(analyze_transcript(transcript), session_id)
     mem = memory_file_for(cwd)
-    entries = (read_existing_entries(mem) + [entry])[-MAX_ENTRIES:]
+    existing = read_existing_entries(mem)
+    if not existing:
+        legacy = legacy_memory_file_for(cwd)
+        if legacy != mem:
+            existing = read_existing_entries(legacy)
+    entries = (existing + [entry])[-MAX_ENTRIES:]
 
     ensure_parent(mem)
     with open(mem, "w", encoding="utf-8") as f:
